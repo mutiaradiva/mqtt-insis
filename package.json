@@ -1,0 +1,19 @@
+{
+  "name": "suhu-monitor-mqtt",
+  "version": "1.0.0",
+  "description": "Sistem Monitoring Suhu Ruangan menggunakan MQTT v5 — Integrasi Sistem Minggu 10",
+  "main": "dashboardServer.js",
+  "scripts": {
+    "dashboard":     "node dashboardServer.js",
+    "monitor":       "node subscribers/monitor.js",
+    "alert1":        "node subscribers/alertWorker1.js",
+    "alert2":        "node subscribers/alertWorker2.js",
+    "sensor-kelas":  "node publishers/sensorKelas.js",
+    "sensor-lab":    "node publishers/sensorLab.js",
+    "controller":    "node publishers/controller.js"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "mqtt": "^5.15.1"
+  }
+}

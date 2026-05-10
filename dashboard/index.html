@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Monitoring Suhu Ruangan</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  h1 { font-size: 1.4rem; font-weight: 600; color: #58a6ff; }
+  #conn-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #8b949e;
+  }
+  #conn-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #f85149;
+    transition: background 0.3s;
+  }
+  #conn-dot.connected { background: #3fb950; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 24px; }
+
+  .card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 20px;
+    transition: border-color 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card:hover { border-color: #58a6ff44; }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  .card-label { font-size: 0.75rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.05em; }
+  .card-location { font-size: 0.9rem; font-weight: 600; margin-top: 2px; }
+  .sensor-badge {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .badge-online  { background: #1c3a2a; color: #3fb950; border: 1px solid #3fb95033; }
+  .badge-offline { background: #3a1c1c; color: #f85149; border: 1px solid #f8514933; }
+
+  .temp-value {
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1;
+    margin: 8px 0;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.5s;
+  }
+  .temp-unit { font-size: 1rem; font-weight: 400; color: #8b949e; }
+  .temp-normal { color: #58a6ff; }
+  .temp-warm   { color: #e3b341; }
+  .temp-hot    { color: #f85149; }
+
+  .card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #21262d;
+    font-size: 0.72rem;
+    color: #6e7681;
+  }
+  .sparkline-wrap { height: 40px; margin: 8px 0; }
+  svg.sparkline { width: 100%; height: 100%; }
+
+  .section-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+  }
+
+  #log-container {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 16px;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .log-entry {
+    display: flex;
+    gap: 10px;
+    padding: 4px 0;
+    border-bottom: 1px solid #161b22;
+    font-size: 0.78rem;
+    font-family: 'Consolas', 'Courier New', monospace;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  .log-time  { color: #6e7681; min-width: 58px; }
+  .log-tag   { min-width: 60px; font-weight: 600; }
+  .log-suhu  { color: #58a6ff; }
+  .log-status { color: #3fb950; }
+  .log-warn  { color: #e3b341; }
+  .log-resp  { color: #bc8cff; }
+
+  .features-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .feat-chip {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.7rem;
+    color: #8b949e;
+    transition: all 0.3s;
+  }
+  .feat-chip.active { border-color: #3fb950; color: #3fb950; background: #1c3a2a; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🌡️ Dashboard Monitoring Suhu Ruangan</h1>
+    <div style="font-size:0.75rem;color:#6e7681;margin-top:4px">MQTT v5 · Integrasi Sistem Minggu 10</div>
+  </div>
+  <div id="conn-status">
+    <div id="conn-dot"></div>
+    <span id="conn-text">Menghubungkan...</span>
+  </div>
+</header>
+
+<div class="features-bar" id="feat-bar">
+  <div class="feat-chip" id="f1">F1: QoS</div>
+  <div class="feat-chip" id="f2">F2: Wildcard</div>
+  <div class="feat-chip" id="f3">F3: Topic Alias</div>
+  <div class="feat-chip" id="f4">F4: User Properties</div>
+  <div class="feat-chip" id="f5">F5: Retain</div>
+  <div class="feat-chip" id="f6">F6: Expiry</div>
+  <div class="feat-chip" id="f7">F7: LWT</div>
+  <div class="feat-chip" id="f8">F8: Req-Response</div>
+  <div class="feat-chip" id="f9">F9: Shared Sub</div>
+  <div class="feat-chip" id="f10">F10: Flow Control</div>
+</div>
+
+<div class="grid" id="sensor-grid">
+  <!-- Sensor cards injected by JS -->
+</div>
+
+<div class="section-title" style="margin-bottom:10px">Log Aktivitas MQTT</div>
+<div id="log-container"><div style="color:#6e7681;font-size:0.8rem">Menunggu data...</div></div>
+
+<script>
+const MAX_HISTORY = 20;
+const sensors = {};
+const featTimers = {};
+
+function activateFeat(id, ms = 2000) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('active');
+  clearTimeout(featTimers[id]);
+  featTimers[id] = setTimeout(() => el.classList.remove('active'), ms);
+}
+
+function tempClass(t) {
+  if (t >= 30) return 'temp-hot';
+  if (t >= 28) return 'temp-warm';
+  return 'temp-normal';
+}
+
+function ensureCard(sensorId, lokasi) {
+  if (sensors[sensorId]) return;
+  sensors[sensorId] = { history: [] };
+  const grid = document.getElementById('sensor-grid');
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.id = 'card-' + sensorId;
+  card.innerHTML = `
+    <div class="card-header">
+      <div>
+        <div class="card-label">${sensorId}</div>
+        <div class="card-location">${lokasi ?? sensorId}</div>
+      </div>
+      <span class="sensor-badge badge-offline" id="badge-${sensorId}">OFFLINE</span>
+    </div>
+    <div class="temp-value temp-normal" id="temp-${sensorId}">--.-</div>
+    <div class="sparkline-wrap"><svg class="sparkline" id="spark-${sensorId}" viewBox="0 0 200 40" preserveAspectRatio="none"></svg></div>
+    <div class="card-footer">
+      <span id="fw-${sensorId}">fw: -</span>
+      <span id="ts-${sensorId}">-</span>
+    </div>
+  `;
+  grid.appendChild(card);
+}
+
+function updateSpark(sensorId) {
+  const hist = sensors[sensorId].history;
+  if (hist.length < 2) return;
+  const svg = document.getElementById('spark-' + sensorId);
+  if (!svg) return;
+  const min = Math.min(...hist) - 1;
+  const max = Math.max(...hist) + 1;
+  const W = 200, H = 40;
+  const pts = hist.map((v, i) => {
+    const x = (i / (hist.length - 1)) * W;
+    const y = H - ((v - min) / (max - min)) * H;
+    return `${x},${y}`;
+  }).join(' ');
+  svg.innerHTML = `
+    <polyline points="${pts}" fill="none" stroke="#58a6ff88" stroke-width="1.5" stroke-linejoin="round"/>
+    <polyline points="0,${H} ${pts} ${W},${H}" fill="url(#grad)" stroke="none"/>
+    <defs><linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#58a6ff" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#58a6ff" stop-opacity="0"/>
+    </linearGradient></defs>`;
+}
+
+function addLog(cls, tag, text) {
+  const container = document.getElementById('log-container');
+  // Remove placeholder
+  const placeholder = container.querySelector('div[style]');
+  if (placeholder) placeholder.remove();
+
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  const t = new Date().toLocaleTimeString('id-ID');
+  entry.innerHTML = `<span class="log-time">${t}</span><span class="log-tag ${cls}">${tag}</span><span>${text}</span>`;
+  container.prepend(entry);
+  // Keep max 50 entries
+  while (container.children.length > 50) container.lastChild.remove();
+}
+
+// ---- SSE Connection ----
+const evtSource = new EventSource('/events');
+
+evtSource.addEventListener('open', () => {
+  document.getElementById('conn-dot').classList.add('connected');
+  document.getElementById('conn-text').textContent = 'Terhubung';
+  activateFeat('f10', 99999); // Flow control aktif selama terhubung
+  activateFeat('f2', 99999);  // Wildcard aktif selama terhubung
+});
+
+evtSource.addEventListener('error', () => {
+  document.getElementById('conn-dot').classList.remove('connected');
+  document.getElementById('conn-text').textContent = 'Terputus — mencoba ulang...';
+});
+
+evtSource.addEventListener('suhu', e => {
+  const d = JSON.parse(e.data);
+  ensureCard(d.sensorId, d.lokasi);
+
+  const s = sensors[d.sensorId];
+  s.history.push(d.suhu);
+  if (s.history.length > MAX_HISTORY) s.history.shift();
+
+  const tempEl = document.getElementById('temp-' + d.sensorId);
+  const fwEl   = document.getElementById('fw-' + d.sensorId);
+  const tsEl   = document.getElementById('ts-' + d.sensorId);
+  const badge  = document.getElementById('badge-' + d.sensorId);
+
+  if (tempEl) {
+    tempEl.textContent = d.suhu.toFixed(1);
+    tempEl.className   = `temp-value ${tempClass(d.suhu)}`;
+  }
+  if (fwEl && d.firmware) fwEl.textContent = `fw: ${d.firmware}`;
+  if (tsEl) tsEl.textContent = new Date(d.timestamp).toLocaleTimeString('id-ID');
+  if (badge) { badge.textContent = 'ONLINE'; badge.className = 'sensor-badge badge-online'; }
+
+  updateSpark(d.sensorId);
+
+  const warn = d.suhu >= 28 ? ' ⚠️' : '';
+  addLog('log-suhu', 'SUHU', `${d.lokasi} → ${d.suhu}°C${warn}`);
+
+  // Highlight fitur yang aktif
+  activateFeat('f1');
+  activateFeat('f4');
+  activateFeat('f5');
+  if (d.topic === 'suhu/lab') activateFeat('f6');
+  if (d.sensorId === 'sensor-kelas-01') activateFeat('f3');
+});
+
+evtSource.addEventListener('status', e => {
+  const d = JSON.parse(e.data);
+  ensureCard(d.sensorId, d.lokasi ?? d.sensorId);
+  const badge = document.getElementById('badge-' + d.sensorId);
+  if (badge) {
+    badge.textContent = d.status.toUpperCase();
+    badge.className   = `sensor-badge ${d.status === 'online' ? 'badge-online' : 'badge-offline'}`;
+  }
+  const icon = d.status === 'online' ? '🟢' : '🔴';
+  addLog('log-status', 'STATUS', `${icon} ${d.sensorId}: ${d.status}`);
+  activateFeat('f7');
+  activateFeat('f5');
+});
+
+evtSource.addEventListener('response', e => {
+  const d = JSON.parse(e.data);
+  addLog('log-resp', 'REQ/RES', `Response dari ${d.sensorId}: ${d.suhu}°C`);
+  activateFeat('f8');
+});
+</script>
+</body>
+</html>
