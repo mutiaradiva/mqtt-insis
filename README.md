@@ -1,6 +1,13 @@
 # Sistem Monitoring Suhu Ruangan — MQTT v5
 Tugas Project Integrasi Sistem Minggu 10
 
+# Team
+| No  | Nama                | NRP        |
+| --- | ------------------- | ---------- |
+| 1   | Kanafira Vanesha P. | 5027241010 |
+| 2   | Clarissa Aydin R.   | 5027241014 |
+| 3   | Mutiara Diva J.     | 5027241083 |
+
 ## Skenario
 Sistem monitoring suhu multi-ruangan (Kelas A & Lab Komputer) yang menggunakan
 semua 10 fitur MQTT v5 secara nyata, bukan sekadar demo.
