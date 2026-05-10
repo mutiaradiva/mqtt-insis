@@ -1,4 +1,4 @@
-# Sistem Monitoring Suhu Ruangan — MQTT v5
+# Sistem Monitoring Suhu Ruangan dengan MQTT v5
 Tugas Project Integrasi Sistem Minggu 10
 
 # Team
